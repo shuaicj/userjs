@@ -1,2 +1,2 @@
 # userjs
-A REST user module based on node.js
+A REST user module based on Node.js.
