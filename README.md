@@ -27,6 +27,21 @@ A REST user module based on Node.js.
     - status: 200, body: { message: 'ok' }
     - status: 404, body: { message: 'not found' }
 
+##### POST /users/:username/sessions
+- request 
+    - param: username
+    - body: { password }
+- response:
+    - status: 200, body: { username, sessionId, createdTime }
+    - status: 400, body: { message: 'already exists' }
+
+##### DELETE /users/:username/sessions/:sessionId
+- request 
+    - param: username, sessionId
+- response:
+    - status: 200, body: { username, sessionId, createdTime }
+    - status: 404, body: { message: 'not found' }
+
 ## Auth Config
 #### How to create mongodb user
 ```

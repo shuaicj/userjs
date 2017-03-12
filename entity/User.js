@@ -1,6 +1,8 @@
 var mongoose = require('mongoose');
+var Schema = mongoose.Schema;
+var ObjectId = Schema.Types.ObjectId;
 
-var User = new mongoose.Schema({
+var User = new Schema({
     username: {
         type: String,
         unique: true,
@@ -9,7 +11,12 @@ var User = new mongoose.Schema({
     password: {
         type: String,
         required: true
-    }
+    },
+    sessions: [{
+        id: ObjectId,
+        httpUserAgent: String,
+        createdTime: Date
+    }]
 }, { 
     timestamps: { 
         createdAt: 'createdTime',
