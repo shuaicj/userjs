@@ -1,4 +1,5 @@
 var require = require('rekuire');
+var config = require('config');
 var express = require('express');
 var validator = require('express-validator');
 var mongoose = require('mongoose');
@@ -10,7 +11,8 @@ var app = express();
 app.use(bodyParser.json());
 app.use(validator());
 
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/hellouserjs');
+console.log('conn', process.env.MONGODB_URI || config.MONGODB_URI);
+mongoose.connect(process.env.MONGODB_URI || config.MONGODB_URI);
 var db = mongoose.connection;
 db.on('error', function() {
     console.error('Mongodb connection error! Is it running?');
@@ -21,7 +23,6 @@ db.once('open', function() {
 
 app.use('/', require('route/user.js'));
 
-var server = app.listen(8080, function() {
-    var port = server.address().port;
-    console.log('Server up! Listening at port %s.', port);
+var server = app.listen(config.PORT, function() {
+    console.log('Server up! Listening at port %s.', config.PORT);
 });

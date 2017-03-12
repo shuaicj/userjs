@@ -1,8 +1,9 @@
 var require = require('rekuire');
+var config = require('config');
 var request = require('supertest');
 var expect = require('chai').expect;
 
-var SERVER = 'http://localhost:8080';
+var SERVER = 'http://localhost:' + config.PORT;
 var USER = 'shuaicj';
 var PASS = 'pass123';
 
