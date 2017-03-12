@@ -84,4 +84,16 @@ router.delete('/users/:username', function(req, res) {
     });
 });
 
+router.post('/users/:username/sessions', function(req, res) {
+    req.checkParams('username', 'username required').notEmpty();
+    req.checkBody('password', 'password required').notEmpty();
+
+    var errors = req.validationErrors();
+    if (errors) {
+        res.status(400).send({ message: util.inspect(errors) });
+        return;
+    }
+
+});
+
 module.exports = router;
