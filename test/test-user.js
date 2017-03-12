@@ -6,98 +6,92 @@ var SERVER = 'http://localhost:8080';
 var USER = 'shuaicj';
 var PASS = 'pass123';
 
-// function testSignUp(param, done, status, code) {
-//     request(config.server).post('/signup').send(param).expect(status).end(function(err, res) {
-//         if (err) return done(err);
-//         if (code) expect(res.body.code).to.equal(code);
-//         done();
-//     });
-// }
-
-// function testSignIn(param, done, status, code) {
-//     request(config.server).post('/signin').send(param).expect(status).end(function(err, res) {
-//         if (err) return done(err);
-//         if (code) expect(res.body.code).to.equal(code);
-//         done();
-//     });
-// }
-
-// function testCheckEmail(param, done, status, exist) {
-//     request(config.server).post('/checkemail').send(param).expect(status).end(function(err, res) {
-//         if (err) return done(err);
-//         if (typeof(exist) != 'undefined') expect(res.body.exist).to.equal(exist);
-//         done();
-//     });
-// }
-
 describe('User Module', function() {
+    function postUser(param) {
+        return request(SERVER).post('/users').send(param);
+    }
+    function getUser(username) {
+        return request(SERVER).get('/users/' + USER);
+    }
+    function deleteUser(username) {
+        return request(SERVER).delete('/users/' + USER);
+    }
+
     describe('POST /users', function() {
-        afterEach('delete the test user in db', function(done) {
-            request(SERVER).delete('/users/:' + USER).end(done);
+        before('delete the test user in db', function(done) {
+            deleteUser(USER).end(done);
         });
-
-        function test(param, done, status) {
-            request(SERVER).post('/users').send(param).expect(status).end(function(err, res) {
-                if (err) return done(err);
-                if (param.username) expect(res.body.username).to.equal(param.username);
-                done();
-            });
-        }
-
+        after('delete the test user in db', function(done) {
+            deleteUser(USER).end(done);
+        });
         it('check param: no param', function(done) {
-            request(SERVER).post('/users')
-            testSignUp({}, done, 400);
+            postUser({}).expect(400, done);
         });
-        it('check param: email undefined', function(done) {
-            testSignUp({ password: config.password }, done, 400);
+        it('check param: username undefined', function(done) {
+            postUser({ password: PASS }).expect(400, done);
         });
-        it('check param: email empty string', function(done) {
-            testSignUp({ email: '', password: config.password }, done, 400);
+        it('check param: username empty string', function(done) {
+            postUser({ username: '', password: PASS }).expect(400, done);
         });
         it('check param: password undefined', function(done) {
-            testSignUp({ email: config.user }, done, 400);
+            postUser({ username: USER }).expect(400, done);
         });
         it('check param: password empty string', function(done) {
-            testSignUp({ email: config.user, password: '' }, done, 400);
+            postUser({ username: USER, password: '' }).expect(400, done);
         });
-        it('sign up successfully', function(done) {
-            testSignUp({ email: config.user, password: config.password }, done, 200, 0);
+        it('success', function(done) {
+            postUser({ username: USER, password: PASS }).expect(200, function(err, res) {
+                if (err) return done(err);
+                expect(res.body.username).to.equal(USER);
+                expect(res.body.createdTime).to.exist;
+                done();
+            });
         });
-        it('duplicated email', function(done) {
-            testSignUp({ email: config.user, password: config.password }, done, 500);
-        });
-    });
-
-    describe('POST /signin', function() {
-        it('check param: no param', function(done) {
-            testSignIn({}, done, 400);
-        });
-        it('check param: email undefined', function(done) {
-            testSignIn({ password: config.password }, done, 400);
-        });
-        it('check param: password undefined', function(done) {
-            testSignIn({ email: config.user }, done, 400);
-        });
-        it('email not exist', function(done) {
-            testSignIn({ email: config.impossibleUser, password: config.password }, done, 200, 2);
-        });
-        it('wrong password', function(done) {
-            testSignIn({ email: config.user, password: 'wrongpass' }, done, 200, 1);
-        });
-        it('sign in successfully', function(done) {
-            testSignIn({ email: config.user, password: config.password }, done, 200, 0);
+        it('duplicated username', function(done) {
+            postUser({ username: USER, password: PASS }).expect(400, {
+                message: 'already exists'
+            }, done);
         });
     });
 
-    describe('POST /checkemail', function() {
-        it('check param: email undefined', function(done) {
-            testCheckEmail({}, done, 400);
+    describe('GET /users/:username', function() {
+        before('delete the test user in db', function(done) {
+            deleteUser(USER).end(done);
         });
-        it('email exist', function(done) {
-            testCheckEmail({ email: config.user }, done, 200, true);
+        after('delete the test user in db', function(done) {
+            deleteUser(USER).end(done);
         });
-        it('email not exist', function(done) {
-            testCheckEmail({ email: config.impossibleUser }, done, 200, false);
+        it('username not exists', function(done) {
+            getUser(USER).expect(404, { message: 'not found' }, done);
+        });
+        it('success', function(done) {
+            postUser({ username: USER, password: PASS }).expect(200, function(err) {
+                if (err) return done(err);
+                getUser(USER).expect(200, function(err, res) {
+                    if (err) return done(err);
+                    expect(res.body.username).to.equal(USER);
+                    expect(res.body.createdTime).to.exist;
+                    done();
+                });
+            });
+        });
+    });
+
+    describe('DELETE /users/:username', function() {
+        before('delete the test user in db', function(done) {
+            deleteUser(USER).end(done);
+        });
+        after('delete the test user in db', function(done) {
+            deleteUser(USER).end(done);
+        });
+        it('username not exists', function(done) {
+            deleteUser(USER).expect(404, { message: 'not found' }, done);
+        });
+        it('success', function(done) {
+            postUser({ username: USER, password: PASS }).expect(200, function(err) {
+                if (err) return done(err);
+                deleteUser(USER).expect(200, { message: 'ok' }, done);
+            });
         });
     });
 });

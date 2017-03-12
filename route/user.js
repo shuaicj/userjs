@@ -5,12 +5,12 @@ var User = require('entity/User');
 var router = express.Router();
 
 router.post('/users', function(req, res) {
-    req.checkBody('username', 'username undefined or empty').notEmpty();
-    req.checkBody('password', 'password undefined or empty').notEmpty();
+    req.checkBody('username', 'username required').notEmpty();
+    req.checkBody('password', 'password required').notEmpty();
 
     var errors = req.validationErrors();
     if (errors) {
-        res.status(400).send(util.inspect(errors));
+        res.status(400).send({ message: util.inspect(errors) });
         return;
     }
 
@@ -21,7 +21,11 @@ router.post('/users', function(req, res) {
 
     user.save(function(err) {
         if (err) { 
-            res.status(500).send('db error');
+            if (err.name === 'MongoError' && err.code === 11000) {
+                res.status(400).send({ message: 'already exists' });
+            } else {
+                res.status(500).send({ message: 'db error' });
+            }
             return;
         }
         console.log('new user ' + user.username);
@@ -33,11 +37,11 @@ router.post('/users', function(req, res) {
 });
 
 router.get('/users/:username', function(req, res) {
-    req.checkParams('username', 'username undefined or empty').notEmpty();
+    req.checkParams('username', 'username required').notEmpty();
 
     var errors = req.validationErrors();
     if (errors) {
-        res.status(400).send(util.inspect(errors));
+        res.status(400).send({ message: util.inspect(errors) });
         return;
     }
 
@@ -45,23 +49,23 @@ router.get('/users/:username', function(req, res) {
 
     User.findOne({ username: username }, function(err, user) {
         if (err) {
-            res.status(500).send('db error');
+            res.status(500).send({ message: 'db error' });
             return;
         }
         if (!user) {
-            res.status(200).json({ username: username, existence: false });
+            res.status(404).json({ message: 'not found' });
             return;
         }
-        res.status(200).json({ username: username, existence: true });
+        res.status(200).json({ username: username, createdTime: user.createdTime });
     });
 });
 
 router.delete('/users/:username', function(req, res) {
-    req.checkParams('username', 'username undefined or empty').notEmpty();
+    req.checkParams('username', 'username required').notEmpty();
 
     var errors = req.validationErrors();
     if (errors) {
-        res.status(400).send(util.inspect(errors));
+        res.status(400).send({ message: util.inspect(errors) });
         return;
     }
 
@@ -69,15 +73,14 @@ router.delete('/users/:username', function(req, res) {
 
     User.remove({ username: username }, function(err, opResult) {
         if (err) {
-            res.status(500).send('db error');
+            res.status(500).send({ message: 'db error' });
             return;
         }
-        console.log('remove result', opResult);
-        if (!opResult && opResult.result.n === 0) {
-            res.status(200).json({ username: username, existence: false });
+        if (opResult.result.n === 0) {
+            res.status(404).json({ message: 'not found' });
             return;
         }
-        res.status(200).json({ username: username, existence: true });
+        res.status(200).json({ message: 'ok' });
     });
 });
 
