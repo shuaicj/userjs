@@ -60,6 +60,39 @@ router.get('/users/:username', function(req, res) {
     });
 });
 
+router.put('/users/:username', function(req, res) {
+    req.checkParams('username', 'username required').notEmpty();
+    req.checkBody('password', 'password required').notEmpty();
+
+    var errors = req.validationErrors();
+    if (errors) {
+        res.status(400).send({ message: util.inspect(errors) });
+        return;
+    }
+
+    var username = req.params.username;
+    var password = req.body.password;
+
+    User.findOne({ username: username }, function(err, user) {
+        if (err) {
+            res.status(500).send({ message: 'db error' });
+            return;
+        }
+        if (!user) {
+            res.status(404).json({ message: 'not found' });
+            return;
+        }
+        user.password = password;
+        user.save(function(err) {
+            if (err) {
+                res.status(500).send({ message: 'db error' });
+                return;
+            }
+            res.status(200).json({ username: username, updatedTime: user.updatedTime });
+        });
+    });
+});
+
 router.delete('/users/:username', function(req, res) {
     req.checkParams('username', 'username required').notEmpty();
 

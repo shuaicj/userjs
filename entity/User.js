@@ -13,9 +13,8 @@ var User = new Schema({
         required: true
     },
     sessions: [{
-        id: ObjectId,
-        httpUserAgent: String,
-        createdTime: Date
+        sessionId: ObjectId, // a simple session
+        sessionTime: Date
     }]
 }, { 
     timestamps: { 

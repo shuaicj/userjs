@@ -6,16 +6,21 @@ var expect = require('chai').expect;
 var SERVER = 'http://localhost:' + config.PORT;
 var USER = 'shuaicj';
 var PASS = 'pass123';
+var PASS2 = 'pass45';
 
 describe('User Module', function() {
     function postUser(param) {
         return request(SERVER).post('/users').send(param);
     }
     function getUser(username) {
-        return request(SERVER).get('/users/' + USER);
+        return request(SERVER).get('/users/' + username);
+    }
+    function putUser(param) {
+        return request(SERVER).put('/users/' + param.username)
+                .send({ password: param.password });
     }
     function deleteUser(username) {
-        return request(SERVER).delete('/users/' + USER);
+        return request(SERVER).delete('/users/' + username);
     }
 
     describe('POST /users', function() {
@@ -72,6 +77,30 @@ describe('User Module', function() {
                     if (err) return done(err);
                     expect(res.body.username).to.equal(USER);
                     expect(res.body.createdTime).to.exist;
+                    done();
+                });
+            });
+        });
+    });
+
+    describe('PUT /users/:username', function() {
+        before('delete the test user in db', function(done) {
+            deleteUser(USER).end(done);
+        });
+        after('delete the test user in db', function(done) {
+            deleteUser(USER).end(done);
+        });
+        it('username not exists', function(done) {
+            putUser({ username: USER, password: PASS2 })
+                .expect(404, { message: 'not found' }, done);
+        });
+        it('success', function(done) {
+            postUser({ username: USER, password: PASS }).expect(200, function(err) {
+                if (err) return done(err);
+                putUser({ username: USER, password: PASS2 }).expect(200, function(err, res) {
+                    if (err) return done(err);
+                    expect(res.body.username).to.equal(USER);
+                    expect(res.body.updatedTime).to.exist;
                     done();
                 });
             });
