@@ -10,14 +10,14 @@ A REST user module based on Node.js.
 - request 
     - body: { username, password }
 - response:
-    - status: 200, body: { username, createdTime }
+    - status: 200, body: { username, createdAt }
     - status: 400, body: { message: 'already exists' }
 
 ##### GET /users/:username
 - request 
     - param: username
 - response:
-    - status: 200, body: { username, createdTime }
+    - status: 200, body: { username, createdAt }
     - status: 404, body: { message: 'not found' }
 
 ##### PUT /users/:username
@@ -25,7 +25,7 @@ A REST user module based on Node.js.
     - param: username
     - body: { password }
 - response:
-    - status: 200, body: { username, updatedTime }
+    - status: 200, body: { username, updatedAt }
     - status: 404, body: { message: 'not found' }
 
 ##### DELETE /users/:username
@@ -40,7 +40,7 @@ A REST user module based on Node.js.
     - param: username
     - body: { password }
 - response:
-    - status: 200, body: { username, sessionId, sessionTime }
+    - status: 200, body: { username, sessionId, sessionCreatedAt }
     - status: 404, body: { message: 'not found' }
 
 ##### DELETE /users/:username/sessions/:sessionId

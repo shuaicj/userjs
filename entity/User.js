@@ -1,8 +1,6 @@
 var mongoose = require('mongoose');
-var Schema = mongoose.Schema;
-var ObjectId = Schema.Types.ObjectId;
 
-var User = new Schema({
+var User = new mongoose.Schema({
     username: {
         type: String,
         unique: true,
@@ -13,14 +11,9 @@ var User = new Schema({
         required: true
     },
     sessions: [{
-        sessionId: ObjectId, // a simple session
-        sessionTime: Date
+        httpUserAgent: { type: String, required: true },
+        sessionCreatedAt: { type: Date, default: Date.now }
     }]
-}, { 
-    timestamps: { 
-        createdAt: 'createdTime',
-        updatedAt: 'updatedTime'
-    }
-});
+}, { timestamps: true });
 
 module.exports = mongoose.model('User', User);

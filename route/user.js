@@ -1,5 +1,6 @@
 var require = require('rekuire');
 var express = require('express');
+var logger = require('winston');
 var util = require('util');
 var User = require('entity/User');
 var router = express.Router();
@@ -28,10 +29,10 @@ router.post('/users', function(req, res) {
             }
             return;
         }
-        console.log('new user ' + user.username);
+        logger.debug('new user %j', user);
         res.status(200).json({ 
             username: user.username, 
-            createdTime: user.createdTime 
+            createdAt: user.createdAt 
         });
     });
 });
@@ -45,9 +46,7 @@ router.get('/users/:username', function(req, res) {
         return;
     }
 
-    var username = req.params.username;
-
-    User.findOne({ username: username }, function(err, user) {
+    User.findOne({ username: req.params.username }, function(err, user) {
         if (err) {
             res.status(500).send({ message: 'db error' });
             return;
@@ -56,7 +55,11 @@ router.get('/users/:username', function(req, res) {
             res.status(404).json({ message: 'not found' });
             return;
         }
-        res.status(200).json({ username: username, createdTime: user.createdTime });
+        logger.debug('get user %j', user);
+        res.status(200).json({ 
+            username: user.username, 
+            createdAt: user.createdAt 
+        });
     });
 });
 
@@ -70,10 +73,8 @@ router.put('/users/:username', function(req, res) {
         return;
     }
 
-    var username = req.params.username;
-    var password = req.body.password;
-
-    User.findOne({ username: username }, function(err, user) {
+    User.findOneAndUpdate({ username: req.params.username }, 
+            { password: req.body.password }, { new: true }, function(err, user) {
         if (err) {
             res.status(500).send({ message: 'db error' });
             return;
@@ -82,13 +83,10 @@ router.put('/users/:username', function(req, res) {
             res.status(404).json({ message: 'not found' });
             return;
         }
-        user.password = password;
-        user.save(function(err) {
-            if (err) {
-                res.status(500).send({ message: 'db error' });
-                return;
-            }
-            res.status(200).json({ username: username, updatedTime: user.updatedTime });
+        logger.debug('put user %j', user);
+        res.status(200).json({ 
+            username: user.username, 
+            updatedAt: user.updatedAt 
         });
     });
 });
@@ -102,14 +100,12 @@ router.delete('/users/:username', function(req, res) {
         return;
     }
 
-    var username = req.params.username;
-
-    User.remove({ username: username }, function(err, opResult) {
+    User.findOneAndRemove({ username: req.params.username }, function(err, user) {
         if (err) {
             res.status(500).send({ message: 'db error' });
             return;
         }
-        if (opResult.result.n === 0) {
+        if (!user) {
             res.status(404).json({ message: 'not found' });
             return;
         }
@@ -118,6 +114,7 @@ router.delete('/users/:username', function(req, res) {
 });
 
 router.post('/users/:username/sessions', function(req, res) {
+    req.checkHeaders('user-agent', 'user-agent required').notEmpty();
     req.checkParams('username', 'username required').notEmpty();
     req.checkBody('password', 'password required').notEmpty();
 
@@ -127,6 +124,24 @@ router.post('/users/:username/sessions', function(req, res) {
         return;
     }
 
+    User.findOneAndUpdate({ username: req.params.username, password: req.body.password },
+            { $push: { sessions: { httpUserAgent: req.headers['user-agent'] } } }, 
+            { new: true }, function(err, user) {
+        if (err) {
+            res.status(500).send({ message: 'db error' });
+            return;
+        }
+        if (!user) {
+            res.status(404).json({ message: 'not found' });
+            return;
+        }
+        logger.debug('new-session user %j', user);
+        res.status(200).json({ 
+            username: user.username, 
+            sessionId: user.sessions[user.sessions.length-1]._id,
+            sessionCreatedAt: user.sessions[user.sessions.length-1].sessionCreatedAt
+        });
+    });
 });
 
 module.exports = router;
