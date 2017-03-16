@@ -73,8 +73,11 @@ router.put('/users/:username', function(req, res) {
         return;
     }
 
-    User.findOneAndUpdate({ username: req.params.username }, 
-            { password: req.body.password }, { new: true }, function(err, user) {
+    var username = req.params.username;
+    var password = req.body.password;
+
+    User.findOneAndUpdate({ username: username }, 
+            { password: password }, { new: true }, function(err, user) {
         if (err) {
             res.status(500).send({ message: 'db error' });
             return;
@@ -109,6 +112,7 @@ router.delete('/users/:username', function(req, res) {
             res.status(404).json({ message: 'not found' });
             return;
         }
+        logger.debug('delete user %j', user);
         res.status(200).json({ message: 'ok' });
     });
 });
@@ -124,8 +128,12 @@ router.post('/users/:username/sessions', function(req, res) {
         return;
     }
 
-    User.findOneAndUpdate({ username: req.params.username, password: req.body.password },
-            { $push: { sessions: { httpUserAgent: req.headers['user-agent'] } } }, 
+    var username = req.params.username;
+    var password = req.body.password;
+    var userAgent = req.headers['user-agent'];
+
+    User.findOneAndUpdate({ username: username, password: password },
+            { $push: { sessions: { httpUserAgent: userAgent } } }, 
             { new: true }, function(err, user) {
         if (err) {
             res.status(500).send({ message: 'db error' });
@@ -138,9 +146,38 @@ router.post('/users/:username/sessions', function(req, res) {
         logger.debug('new-session user %j', user);
         res.status(200).json({ 
             username: user.username, 
-            sessionId: user.sessions[user.sessions.length-1]._id,
-            sessionCreatedAt: user.sessions[user.sessions.length-1].sessionCreatedAt
+            sessionId: user.sessions[user.sessions.length - 1]._id,
+            sessionCreatedAt: user.sessions[user.sessions.length - 1].sessionCreatedAt
         });
+    });
+});
+
+router.delete('/users/:username/sessions/:sessionId', function(req, res) {
+    req.checkParams('username', 'username required').notEmpty();
+    req.checkParams('sessionId', 'sessionId required').notEmpty();
+
+    var errors = req.validationErrors();
+    if (errors) {
+        res.status(400).send({ message: util.inspect(errors) });
+        return;
+    }
+
+    var username = req.params.username;
+    var sessionId = req.params.sessionId;
+
+    User.findOneAndUpdate({ username: username, 'sessions._id': sessionId }, 
+            { $pull: { sessions: { _id: sessionId } } }, 
+            { new: true }, function(err, user) {
+        if (err) {
+            res.status(500).send({ message: 'db error' });
+            return;
+        }
+        if (!user) {
+            res.status(404).json({ message: 'not found' });
+            return;
+        }
+        logger.debug('delete-session user %j', user);
+        res.status(200).json({ message: 'ok' });
     });
 });
 

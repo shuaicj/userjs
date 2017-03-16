@@ -1,12 +1,14 @@
 var require = require('rekuire');
 var config = require('config');
+var mongoose = require('mongoose');
 var request = require('supertest');
 var expect = require('chai').expect;
 
 var SERVER = 'http://localhost:' + config.PORT;
 var USER = 'shuaicj';
 var PASS = 'pass123';
-var PASS2 = 'pass45';
+var USER2 = 'shuaijc';
+var PASS2 = 'pass456';
 
 describe('User Module', function() {
     function postUser(body) {
@@ -154,6 +156,47 @@ describe('User Module', function() {
                         expect(res2.body.sessionId).to.exist.not.equal(res1.body.sessionId);
                         expect(res2.body.sessionCreatedAt).to.exist.not.equal(res1.body.sessionCreatedAt);
                         done();
+                    });
+                });
+            });
+        });
+    });
+
+    describe('DELETE /users/:username/sessions/:sessionId', function() {
+        it('username not exists', function(done) {
+            postUser({ username: USER, password: PASS }).expect(200, function(err) {
+                if (err) return done(err);
+                postSession(USER, { password: PASS }).expect(200, function(err, res) {
+                    if (err) return done(err);
+                    deleteSession(USER2, res.body.sessionId)
+                        .expect(404, { message: 'not found' }, done);
+                });
+            });
+        });
+        it('sessionId not exists', function(done) {
+            postUser({ username: USER, password: PASS }).expect(200, function(err) {
+                if (err) return done(err);
+                postSession(USER, { password: PASS }).expect(200, function(err, res) {
+                    if (err) return done(err);
+                    deleteSession(USER, new mongoose.Types.ObjectId())
+                        .expect(404, { message: 'not found' }, done);
+                });
+            });
+        });
+        it('success', function(done) {
+            postUser({ username: USER, password: PASS }).expect(200, function(err) {
+                if (err) return done(err);
+                postSession(USER, { password: PASS }).expect(200, function(err, res1) {
+                    if (err) return done(err);
+                    postSession(USER, { password: PASS }).expect(200, function(err, res2) {
+                        if (err) return done(err);
+                        deleteSession(USER, res1.body.sessionId).expect(200, {
+                            message: 'ok'
+                        }, function() {
+                            deleteSession(USER, res2.body.sessionId).expect(200, {
+                                message: 'ok'
+                            }, done);
+                        });
                     });
                 });
             });
