@@ -119,6 +119,7 @@ router.put('/users/:username', function(req, res) {
 
 router.delete('/users/:username', function(req, res) {
     req.checkParams('username', 'username required').notEmpty();
+    req.checkBody('password', 'password required').notEmpty();
 
     var errors = req.validationErrors();
     if (errors) {
@@ -126,7 +127,10 @@ router.delete('/users/:username', function(req, res) {
         return;
     }
 
-    User.findOneAndRemove({ username: req.params.username }, function(err, user) {
+    var username = req.params.username;
+    var password = req.body.password;
+
+    User.findOne({ username: username }, function(err, user) {
         if (err) {
             res.status(500).send({ message: 'db error' });
             return;
@@ -135,8 +139,24 @@ router.delete('/users/:username', function(req, res) {
             res.status(404).json({ message: 'not found' });
             return;
         }
-        logger.debug('delete user %j', user);
-        res.status(200).json({ message: 'ok' });
+        passwordCheck(password, user.password, function(isMatched) {
+            if (!isMatched) {
+                res.status(404).json({ message: 'not found' });
+                return;
+            }
+            User.findByIdAndRemove(user._id, function(err, user) {
+                if (err) {
+                    res.status(500).send({ message: 'db error' });
+                    return;
+                }
+                if (!user) {
+                    res.status(404).json({ message: 'not found' });
+                    return;
+                }
+                logger.debug('delete user %j', user);
+                res.status(200).json({ message: 'ok' });
+            });
+        });
     });
 });
 

@@ -20,8 +20,8 @@ describe('User Module', function() {
     function putUser(username, body) {
         return request(SERVER).put('/users/' + username).send(body);
     }
-    function deleteUser(username) {
-        return request(SERVER).delete('/users/' + username);
+    function deleteUser(username, body) {
+        return request(SERVER).delete('/users/' + username).send(body);
     }
     function postSession(username, body) {
         return request(SERVER).post('/users/' + username + '/sessions').send(body);
@@ -31,10 +31,10 @@ describe('User Module', function() {
     }
 
     beforeEach('delete the test user in db', function(done) {
-        deleteUser(USER).end(done);
+        deleteUser(USER).send({ password: PASS }).end(done);
     });
     afterEach('delete the test user in db', function(done) {
-        deleteUser(USER).end(done);
+        deleteUser(USER).send({ password: PASS }).end(done);
     });
 
     describe('POST /users', function() {
@@ -105,6 +105,13 @@ describe('User Module', function() {
             putUser(USER, { oldPassword: PASS, newPassword: PASS2 })
                 .expect(404, { message: 'not found' }, done);
         });
+        it('password not match', function(done) {
+            postUser({ username: USER, password: PASS }).expect(200, function(err) {
+                if (err) return done(err);
+                putUser(USER, { oldPassword: PASS2, newPassword: PASS })
+                    .expect(404, { message: 'not found' }, done);
+            });
+        });
         it('success', function(done) {
             postUser({ username: USER, password: PASS }).expect(200, function(err) {
                 if (err) return done(err);
@@ -112,20 +119,35 @@ describe('User Module', function() {
                     if (err) return done(err);
                     expect(res.body.username).to.equal(USER);
                     expect(res.body.updatedAt).to.exist;
-                    done();
+                    putUser(USER, { oldPassword: PASS2, newPassword: PASS }).expect(200, done);
                 });
             });
         });
     });
 
     describe('DELETE /users/:username', function() {
+        it('password undefined', function(done) {
+            deleteUser(USER, {}).expect(400, done);
+        });
+        it('password empty', function(done) {
+            deleteUser(USER, { password: '' }).expect(400, done);
+        });
         it('username not exists', function(done) {
-            deleteUser(USER).expect(404, { message: 'not found' }, done);
+            deleteUser(USER, { password: PASS })
+                .expect(404, { message: 'not found' }, done);
+        });
+        it('password not match', function(done) {
+            postUser({ username: USER, password: PASS }).expect(200, function(err) {
+                if (err) return done(err);
+                deleteUser(USER, { password: PASS2 })
+                    .expect(404, { message: 'not found' }, done);
+            });
         });
         it('success', function(done) {
             postUser({ username: USER, password: PASS }).expect(200, function(err) {
                 if (err) return done(err);
-                deleteUser(USER).expect(200, { message: 'ok' }, done);
+                deleteUser(USER, { password: PASS })
+                    .expect(200, { message: 'ok' }, done);
             });
         });
     });
@@ -141,7 +163,7 @@ describe('User Module', function() {
             postSession(USER, { password: PASS })
                 .expect(404, { message: 'not found' }, done);
         });
-        it('password wrong', function(done) {
+        it('password not match', function(done) {
             postUser({ username: USER, password: PASS }).expect(200, function(err) {
                 if (err) return done(err);
                 postSession(USER, { password: PASS2 })

@@ -31,6 +31,7 @@ A REST user module based on Node.js.
 ##### DELETE /users/:username
 - request 
     - param: username
+    - body: { password }
 - response:
     - status: 200, body: { message: 'ok' }
     - status: 404, body: { message: 'not found' }
