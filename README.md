@@ -51,8 +51,8 @@ A REST user module based on Node.js.
     - status: 200, body: { message: 'ok' }
     - status: 404, body: { message: 'not found' }
 
-## Auth Config
-#### How to create mongodb user
+## Mongodb Auth Config
+#### Create mongodb user in no auth mode
 ```
 use hellouserjs;
 db.createUser({
@@ -62,17 +62,11 @@ db.createUser({
 });
 ```
 
-#### How to modify config
+#### Modify mongodb config
 Assuming that mongodb is installed via `brew`. The config file is located
 at `/usr/local/etc/mongod.conf`. Append to the config file with:
 `security.authorization: enabled`
 
-#### How to start
+#### Start mongodb in auth mode
 `mongod --config /usr/local/etc/mongod.conf`
 
-#### How to connect via `mongo`
-`mongo -u hellouserjsu -p hellouserjsp hellouserjs`
-
-#### Note 
-If there is already a collecton named 'users', drop it by `db.users.drop()`; Or
-the unique index will not work.
