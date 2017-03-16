@@ -23,7 +23,7 @@ A REST user module based on Node.js.
 ##### PUT /users/:username
 - request 
     - param: username
-    - body: { password }
+    - body: { oldPassword, newPassword }
 - response:
     - status: 200, body: { username, updatedAt }
     - status: 404, body: { message: 'not found' }

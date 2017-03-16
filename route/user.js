@@ -68,7 +68,8 @@ router.get('/users/:username', function(req, res) {
 
 router.put('/users/:username', function(req, res) {
     req.checkParams('username', 'username required').notEmpty();
-    req.checkBody('password', 'password required').notEmpty();
+    req.checkBody('oldPassword', 'oldPassword required').notEmpty();
+    req.checkBody('newPassword', 'newPassword required').notEmpty();
 
     var errors = req.validationErrors();
     if (errors) {
@@ -76,23 +77,41 @@ router.put('/users/:username', function(req, res) {
         return;
     }
 
-    passwordHash(req.body.password, function(hash) {
-        var username = req.params.username;
+    var username = req.params.username;
+    var oldPassword = req.body.oldPassword;
+    var newPassword = req.body.newPassword;
 
-        User.findOneAndUpdate({ username: username }, 
-                { password: hash }, { new: true }, function(err, user) {
-            if (err) {
-                res.status(500).send({ message: 'db error' });
-                return;
-            }
-            if (!user) {
+    User.findOne({ username: username }, function(err, user) {
+        if (err) {
+            res.status(500).send({ message: 'db error' });
+            return;
+        }
+        if (!user) {
+            res.status(404).json({ message: 'not found' });
+            return;
+        }
+        passwordCheck(oldPassword, user.password, function(isMatched) {
+            if (!isMatched) {
                 res.status(404).json({ message: 'not found' });
                 return;
             }
-            logger.debug('put user %j', user);
-            res.status(200).json({ 
-                username: user.username, 
-                updatedAt: user.updatedAt 
+            passwordHash(newPassword, function(hash) {
+                User.findByIdAndUpdate(user._id, 
+                        { password: hash }, { new: true }, function(err, user) {
+                    if (err) {
+                        res.status(500).send({ message: 'db error' });
+                        return;
+                    }
+                    if (!user) {
+                        res.status(404).json({ message: 'not found' });
+                        return;
+                    }
+                    logger.debug('put user %j', user);
+                    res.status(200).json({ 
+                        username: user.username, 
+                        updatedAt: user.updatedAt 
+                    });
+                });
             });
         });
     });
@@ -150,7 +169,7 @@ router.post('/users/:username/sessions', function(req, res) {
                 res.status(404).json({ message: 'not found' });
                 return;
             }
-            User.findOneAndUpdate({ username: username },
+            User.findByIdAndUpdate(user._id,
                     { $push: { sessions: { httpUserAgent: userAgent } } }, 
                     { new: true }, function(err, user) {
                 if (err) {

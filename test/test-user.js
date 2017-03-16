@@ -89,20 +89,26 @@ describe('User Module', function() {
     });
 
     describe('PUT /users/:username', function() {
-        it('password undefined', function(done) {
-            putUser(USER, {}).expect(400, done);
+        it('old password undefined', function(done) {
+            putUser(USER, { newPassword: PASS2 }).expect(400, done);
         });
-        it('password empty', function(done) {
-            putUser(USER, { password: '' }).expect(400, done);
+        it('old password empty', function(done) {
+            putUser(USER, { oldPassword: '', newPassword: PASS2 }).expect(400, done);
+        });
+        it('new password undefined', function(done) {
+            putUser(USER, { oldPassword: PASS }).expect(400, done);
+        });
+        it('new password empty', function(done) {
+            putUser(USER, { oldPassword: PASS, newPassword: '' }).expect(400, done);
         });
         it('username not exists', function(done) {
-            putUser(USER, { password: PASS2 })
+            putUser(USER, { oldPassword: PASS, newPassword: PASS2 })
                 .expect(404, { message: 'not found' }, done);
         });
         it('success', function(done) {
             postUser({ username: USER, password: PASS }).expect(200, function(err) {
                 if (err) return done(err);
-                putUser(USER, { password: PASS2 }).expect(200, function(err, res) {
+                putUser(USER, { oldPassword: PASS, newPassword: PASS2 }).expect(200, function(err, res) {
                     if (err) return done(err);
                     expect(res.body.username).to.equal(USER);
                     expect(res.body.updatedAt).to.exist;
