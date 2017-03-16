@@ -1,6 +1,7 @@
 var require = require('rekuire');
 var express = require('express');
 var logger = require('winston');
+var bcrypt = require('bcryptjs');
 var util = require('util');
 var User = require('entity/User');
 var router = express.Router();
@@ -15,24 +16,26 @@ router.post('/users', function(req, res) {
         return;
     }
 
-    var user = new User({ 
-        username: req.body.username, 
-        password: req.body.password, 
-    });
+    passwordHash(req.body.password, function(hash) {
+        var user = new User({ 
+            username: req.body.username, 
+            password: hash, 
+        });
 
-    user.save(function(err) {
-        if (err) { 
-            if (err.name === 'MongoError' && err.code === 11000) {
-                res.status(400).send({ message: 'already exists' });
-            } else {
-                res.status(500).send({ message: 'db error' });
+        user.save(function(err) {
+            if (err) { 
+                if (err.name === 'MongoError' && err.code === 11000) {
+                    res.status(400).send({ message: 'already exists' });
+                } else {
+                    res.status(500).send({ message: 'db error' });
+                }
+                return;
             }
-            return;
-        }
-        logger.debug('new user %j', user);
-        res.status(200).json({ 
-            username: user.username, 
-            createdAt: user.createdAt 
+            logger.debug('new user %j', user);
+            res.status(200).json({ 
+                username: user.username, 
+                createdAt: user.createdAt 
+            });
         });
     });
 });
@@ -73,23 +76,24 @@ router.put('/users/:username', function(req, res) {
         return;
     }
 
-    var username = req.params.username;
-    var password = req.body.password;
+    passwordHash(req.body.password, function(hash) {
+        var username = req.params.username;
 
-    User.findOneAndUpdate({ username: username }, 
-            { password: password }, { new: true }, function(err, user) {
-        if (err) {
-            res.status(500).send({ message: 'db error' });
-            return;
-        }
-        if (!user) {
-            res.status(404).json({ message: 'not found' });
-            return;
-        }
-        logger.debug('put user %j', user);
-        res.status(200).json({ 
-            username: user.username, 
-            updatedAt: user.updatedAt 
+        User.findOneAndUpdate({ username: username }, 
+                { password: hash }, { new: true }, function(err, user) {
+            if (err) {
+                res.status(500).send({ message: 'db error' });
+                return;
+            }
+            if (!user) {
+                res.status(404).json({ message: 'not found' });
+                return;
+            }
+            logger.debug('put user %j', user);
+            res.status(200).json({ 
+                username: user.username, 
+                updatedAt: user.updatedAt 
+            });
         });
     });
 });
@@ -132,9 +136,7 @@ router.post('/users/:username/sessions', function(req, res) {
     var password = req.body.password;
     var userAgent = req.headers['user-agent'];
 
-    User.findOneAndUpdate({ username: username, password: password },
-            { $push: { sessions: { httpUserAgent: userAgent } } }, 
-            { new: true }, function(err, user) {
+    User.findOne({ username: username }, function(err, user) {
         if (err) {
             res.status(500).send({ message: 'db error' });
             return;
@@ -143,11 +145,29 @@ router.post('/users/:username/sessions', function(req, res) {
             res.status(404).json({ message: 'not found' });
             return;
         }
-        logger.debug('new-session user %j', user);
-        res.status(200).json({ 
-            username: user.username, 
-            sessionId: user.sessions[user.sessions.length - 1]._id,
-            sessionCreatedAt: user.sessions[user.sessions.length - 1].sessionCreatedAt
+        passwordCheck(password, user.password, function(isMatched) {
+            if (!isMatched) {
+                res.status(404).json({ message: 'not found' });
+                return;
+            }
+            User.findOneAndUpdate({ username: username },
+                    { $push: { sessions: { httpUserAgent: userAgent } } }, 
+                    { new: true }, function(err, user) {
+                if (err) {
+                    res.status(500).send({ message: 'db error' });
+                    return;
+                }
+                if (!user) {
+                    res.status(404).json({ message: 'not found' });
+                    return;
+                }
+                logger.debug('new-session user %j', user);
+                res.status(200).json({ 
+                    username: user.username, 
+                    sessionId: user.sessions[user.sessions.length - 1]._id,
+                    sessionCreatedAt: user.sessions[user.sessions.length - 1].sessionCreatedAt
+                });
+            });
         });
     });
 });
@@ -180,5 +200,19 @@ router.delete('/users/:username/sessions/:sessionId', function(req, res) {
         res.status(200).json({ message: 'ok' });
     });
 });
+
+function passwordHash(plaintext, fn) {
+    bcrypt.hash(plaintext, 10, function(err, hash) {
+        if (err) logger.error(err);
+        fn(hash);
+    });
+}
+
+function passwordCheck(plaintext, hash, fn) {
+    bcrypt.compare(plaintext, hash, function(err, isMatched) {
+        if (err) logger.error(err);
+        fn(isMatched);
+    });
+}
 
 module.exports = router;
