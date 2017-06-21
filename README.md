@@ -1,5 +1,5 @@
 # userjs
-A REST user module based on Node.js.
+An example for learning Node.js - a REST user module.
 
 ## API
 - general response:
